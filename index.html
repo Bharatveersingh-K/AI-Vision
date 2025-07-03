@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Fix the favicon path and use correct file format -->
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <!-- Add additional favicon formats for better browser compatibility -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI-Vision</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+ 
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: #f0f0f0;
+      color: #333;
+    }
+    #root {
+       
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+  </style>
+   <script>
+  window.env = {
+    API_URL: "__API_URL__"
+  };
+  console.log("Environment variables loaded:", API_URL);
+</script>
+</html>
