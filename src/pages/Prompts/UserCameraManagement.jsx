@@ -73,79 +73,74 @@ const UserCameraManagement = () => {
   const puid = Cookies.get('id') || 0;
 
   // Fetch user-camera associations
-  const fetchUserCameras = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await axios.post(`${API_URL}/UserCamera/manage`, null, {
-        params: {
-          PUID: puid,
-          Slug: window.location.pathname,
-          CrudAction: 'VIEW',
-          PageNo: pagination.current,
-          PageSize: pagination.pageSize,
-          Search: searchText
-        }
-      });
-      
-      const data = response.data.data || [];
-      setUserCameras(data);
-      setPagination({
-        ...pagination,
-        total: response.data.totalCount || 0
-      });
-    } catch (error) {
-      console.error('Error fetching user-camera associations:', error);
-      message.error('Failed to fetch user-camera associations');
-    } finally {
-      setLoading(false);
-    }
-  }, [pagination.current, pagination.pageSize, searchText, puid]);
-
+ const fetchUserCameras = useCallback(async () => {
+  setLoading(true);
+  try {
+    const formData = new FormData();
+    formData.append('PUID', puid);
+    formData.append('Slug', window.location.pathname);
+    formData.append('CrudAction', 'VIEW');
+    formData.append('PageNo', pagination.current);
+    formData.append('PageSize', pagination.pageSize);
+    formData.append('Search', searchText);
+    
+    const response = await axios.post(`${API_URL}/UserCamera/manage`, formData);
+    
+    const data = response.data.data || [];
+    setUserCameras(data);
+    setPagination({
+      ...pagination,
+      total: response.data.totalCount || 0
+    });
+  } catch (error) {
+    console.error('Error fetching user-camera associations:', error);
+    message.error('Failed to fetch user-camera associations');
+  } finally {
+    setLoading(false);
+  }
+}, [pagination.current, pagination.pageSize, searchText, puid]);
   // Fetch users for dropdown
   const fetchUsers = async () => {
-    setLoadingUsers(true);
-    try {
-      const response = await axios.post(`${API_URL}/User/manage`, null, {
-        params: {
-          PUID: puid,
-          Slug: window.location.pathname,
-          CrudAction: 'VIEW',
-          PageSize: 100
-        }
-      });
-      
-      const data = response.data.data || [];
-      setUsers(data);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      message.error('Failed to load users');
-    } finally {
-      setLoadingUsers(false);
-    }
-  };
-
+  setLoadingUsers(true);
+  try {
+    const formData = new FormData();
+    formData.append('PUID', puid);
+    formData.append('Slug', window.location.pathname);
+    formData.append('CrudAction', 'VIEWACTIVE');
+    formData.append('PageSize', 100);
+    
+    const response = await axios.post(`${API_URL}/User/manage`, formData);
+    
+    const data = response.data.data || [];
+    setUsers(data);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    message.error('Failed to load users');
+  } finally {
+    setLoadingUsers(false);
+  }
+};
   // Fetch cameras for dropdown
   const fetchCameras = async () => {
-    setLoadingCameras(true);
-    try {
-      const response = await axios.post(`${API_URL}/Camera/manage`, null, {
-        params: {
-          PUID: puid,
-          Slug: window.location.pathname,
-          CrudAction: 'VIEW',
-          PageSize: 100
-        }
-      });
-      
-      const data = response.data.data || [];
-      setCameras(data);
-    } catch (error) {
-      console.error('Error fetching cameras:', error);
-      message.error('Failed to load cameras');
-    } finally {
-      setLoadingCameras(false);
-    }
-  };
+  setLoadingCameras(true);
+  try {
+    const formData = new FormData();
+    formData.append('PUID', puid);
+    formData.append('Slug', window.location.pathname);
+    formData.append('CrudAction', 'VIEWACTIVE');
+    formData.append('PageSize', 100);
+    
+    const response = await axios.post(`${API_URL}/Camera/manage`, formData);
+    
+    const data = response.data.data || [];
+    setCameras(data);
+  } catch (error) {
+    console.error('Error fetching cameras:', error);
+    message.error('Failed to load cameras');
+  } finally {
+    setLoadingCameras(false);
+  }
+};
 
   useEffect(() => {
     fetchUserCameras();
@@ -351,28 +346,35 @@ const UserCameraManagement = () => {
     };
   
     const handleSubmit = async () => {
-      try {
-        const values = await form.validateFields();
-        setLoading(true);
-        
-        const params = {
-          ...values,
-          PUID: puid,
-          Slug: window.location.pathname,
-          CrudAction: isEditMode ? 'EDIT' : 'ADD'
-        };
-        
-        await axios.post(`${API_URL}/UserCamera/manage`, null, { params });
-        
-        message.success(`User-Camera association ${isEditMode ? 'updated' : 'added'} successfully`);
-        onClose(true);
-      } catch (error) {
-        console.error('Error submitting form:', error);
-        message.error(error.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'add'} association`);
-      } finally {
-        setLoading(false);
+  try {
+    const values = await form.validateFields();
+    setLoading(true);
+    
+    const formData = new FormData();
+    
+    // Append form values to FormData
+    Object.keys(values).forEach(key => {
+      if (values[key] !== null && values[key] !== undefined) {
+        formData.append(key, values[key]);
       }
-    };
+    });
+    
+    // Add additional required parameters
+    formData.append('PUID', puid);
+    formData.append('Slug', window.location.pathname);
+    formData.append('CrudAction', isEditMode ? 'EDIT' : 'ADD');
+    
+    await axios.post(`${API_URL}/UserCamera/manage`, formData);
+    
+    message.success(`User-Camera association ${isEditMode ? 'updated' : 'added'} successfully`);
+    onClose(true);
+  } catch (error) {
+    console.error('Error submitting form:', error);
+    message.error(error.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'add'} association`);
+  } finally {
+    setLoading(false);
+  }
+};
     
     const modalTitle = (
       <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -603,28 +605,27 @@ const UserCameraManagement = () => {
     const [loading, setLoading] = useState(false);
   
     const handleDelete = async () => {
-      if (!association || !association.id) return;
-      
-      setLoading(true);
-      try {
-        await axios.post(`${API_URL}/UserCamera/manage`, null, {
-          params: {
-            Id: association.id,
-            PUID: puid,
-            Slug: window.location.pathname,
-            CrudAction: 'DELETE'
-          }
-        });
-        
-        message.success('User-Camera association deleted successfully');
-        onClose(true);
-      } catch (error) {
-        console.error('Error deleting association:', error);
-        message.error(error.response?.data?.message || 'Failed to delete association');
-      } finally {
-        setLoading(false);
-      }
-    };
+  if (!association || !association.id) return;
+  
+  setLoading(true);
+  try {
+    const formData = new FormData();
+    formData.append('Id', association.id);
+    formData.append('PUID', puid);
+    formData.append('Slug', window.location.pathname);
+    formData.append('CrudAction', 'DELETE');
+    
+    await axios.post(`${API_URL}/UserCamera/manage`, formData);
+    
+    message.success('User-Camera association deleted successfully');
+    onClose(true);
+  } catch (error) {
+    console.error('Error deleting association:', error);
+    message.error(error.response?.data?.message || 'Failed to delete association');
+  } finally {
+    setLoading(false);
+  }
+};
   
     return (
       <Modal

@@ -13,28 +13,31 @@ const DeleteCameraModal = ({ visible, onClose, camera }) => {
   const puid = Cookies.get('id') || 0;
 
   const handleDelete = async () => {
-    if (!camera || !camera.id) return;
+  if (!camera || !camera.id) return;
+  
+  setLoading(true);
+  try {
+    // Create FormData object
+    const formData = new FormData();
     
-    setLoading(true);
-    try {
-      await axios.post(`${API_URL}/Camera/manage`, null, {
-        params: {
-          Id: camera.id,
-          PUID: puid,
-          Slug: window.location.pathname,
-          CrudAction: 'DELETE'
-        }
-      });
-      
-      message.success('Camera deleted successfully');
-      onClose(true);
-    } catch (error) {
-      console.error('Error deleting camera:', error);
-      message.error(error.response?.data?.message || 'Failed to delete camera');
-    } finally {
-      setLoading(false);
-    }
-  };
+    // Append all required parameters
+    formData.append('Id', camera.id);
+    formData.append('PUID', puid);
+    formData.append('Slug', window.location.pathname);
+    formData.append('CrudAction', 'DELETE');
+    
+    // Send the request with FormData as the body
+    await axios.post(`${API_URL}/Camera/manage`, formData);
+    
+    message.success('Camera deleted successfully');
+    onClose(true);
+  } catch (error) {
+    console.error('Error deleting camera:', error);
+    message.error(error.response?.data?.message || 'Failed to delete camera');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <Modal

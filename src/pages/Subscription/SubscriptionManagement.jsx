@@ -111,33 +111,31 @@ const SubscriptionManagement = () => {
 
   // Fetch subscriptions
   const fetchSubscriptions = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await axios.post(`${API_URL}/Subscription/manage`, null, {
-        params: {
-          PUID: puid,
-          Slug: window.location.pathname,
-          CrudAction: 'VIEW',
-          PageNo: pagination.current,
-          PageSize: pagination.pageSize,
-          Search: searchText
-        }
-      });
-      
-      const data = response.data.data || [];
-      setSubscriptions(data);
-      setPagination({
-        ...pagination,
-        total: response.data.totalCount || 0
-      });
-    } catch (error) {
-      console.error('Error fetching subscriptions:', error);
-      message.error('Failed to fetch subscription plans');
-    } finally {
-      setLoading(false);
-    }
-  }, [pagination.current, pagination.pageSize, searchText, puid]);
-
+  setLoading(true);
+  try {
+    const formData = new FormData();
+    formData.append('PUID', puid);
+    formData.append('Slug', window.location.pathname);
+    formData.append('CrudAction', 'VIEW');
+    formData.append('PageNo', pagination.current);
+    formData.append('PageSize', pagination.pageSize);
+    formData.append('Search', searchText);
+    
+    const response = await axios.post(`${API_URL}/Subscription/manage`, formData);
+    
+    const data = response.data.data || [];
+    setSubscriptions(data);
+    setPagination({
+      ...pagination,
+      total: response.data.totalCount || 0
+    });
+  } catch (error) {
+    console.error('Error fetching subscriptions:', error);
+    message.error('Failed to fetch subscription plans');
+  } finally {
+    setLoading(false);
+  }
+}, [pagination.current, pagination.pageSize, searchText, puid]);
   useEffect(() => {
     fetchSubscriptions();
   }, [fetchSubscriptions, refreshKey]);
@@ -342,28 +340,35 @@ const SubscriptionManagement = () => {
     };
   
     const handleSubmit = async () => {
-      try {
-        const values = await form.validateFields();
-        setLoading(true);
-        
-        const params = {
-          ...values,
-          PUID: puid,
-          Slug: window.location.pathname,
-          CrudAction: isEditMode ? 'EDIT' : 'ADD'
-        };
-        
-        await axios.post(`${API_URL}/Subscription/manage`, null, { params });
-        
-        message.success(`Subscription plan ${isEditMode ? 'updated' : 'added'} successfully`);
-        onClose(true);
-      } catch (error) {
-        console.error('Error submitting form:', error);
-        message.error(error.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'add'} subscription plan`);
-      } finally {
-        setLoading(false);
+  try {
+    const values = await form.validateFields();
+    setLoading(true);
+    
+    const formData = new FormData();
+    
+    // Add form values to FormData
+    Object.keys(values).forEach(key => {
+      if (values[key] !== null && values[key] !== undefined) {
+        formData.append(key, values[key]);
       }
-    };
+    });
+    
+    // Add additional parameters
+    formData.append('PUID', puid);
+    formData.append('Slug', window.location.pathname);
+    formData.append('CrudAction', isEditMode ? 'EDIT' : 'ADD');
+    
+    await axios.post(`${API_URL}/Subscription/manage`, formData);
+    
+    message.success(`Subscription plan ${isEditMode ? 'updated' : 'added'} successfully`);
+    onClose(true);
+  } catch (error) {
+    console.error('Error submitting form:', error);
+    message.error(error.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'add'} subscription plan`);
+  } finally {
+    setLoading(false);
+  }
+};
     
     const modalTitle = (
       <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -646,28 +651,27 @@ const SubscriptionManagement = () => {
     const [loading, setLoading] = useState(false);
   
     const handleDelete = async () => {
-      if (!subscription || !subscription.id) return;
-      
-      setLoading(true);
-      try {
-        await axios.post(`${API_URL}/Subscription/manage`, null, {
-          params: {
-            Id: subscription.id,
-            PUID: puid,
-            Slug: window.location.pathname,
-            CrudAction: 'DELETE'
-          }
-        });
-        
-        message.success('Subscription plan deleted successfully');
-        onClose(true);
-      } catch (error) {
-        console.error('Error deleting subscription plan:', error);
-        message.error(error.response?.data?.message || 'Failed to delete subscription plan');
-      } finally {
-        setLoading(false);
-      }
-    };
+  if (!subscription || !subscription.id) return;
+  
+  setLoading(true);
+  try {
+    const formData = new FormData();
+    formData.append('Id', subscription.id);
+    formData.append('PUID', puid);
+    formData.append('Slug', window.location.pathname);
+    formData.append('CrudAction', 'DELETE');
+    
+    await axios.post(`${API_URL}/Subscription/manage`, formData);
+    
+    message.success('Subscription plan deleted successfully');
+    onClose(true);
+  } catch (error) {
+    console.error('Error deleting subscription plan:', error);
+    message.error(error.response?.data?.message || 'Failed to delete subscription plan');
+  } finally {
+    setLoading(false);
+  }
+};
   
     return (
       <Modal

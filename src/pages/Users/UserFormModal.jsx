@@ -24,6 +24,7 @@ import {
   InfoCircleOutlined,
   CloseOutlined,
   DesktopOutlined,
+  CreditCardOutlined,
 } from "@ant-design/icons";
 import axios from "axios";
 import Cookies from "js-cookie";
@@ -38,6 +39,7 @@ const UserFormModal = ({ visible, onClose, user }) => {
   const [addressTypes, setAddressTypes] = useState([]);
   const [states, setStates] = useState([]);
   const [cities, setCities] = useState([]);
+  const [subscriptions, setSubscriptions] = useState([]);
   const [selectedState, setSelectedState] = useState(null);
   const [formTouched, setFormTouched] = useState(false);
   const isEditMode = !!user;
@@ -50,6 +52,7 @@ const UserFormModal = ({ visible, onClose, user }) => {
       fetchRoles();
       fetchAddressTypes();
       fetchStateCity();
+      fetchSubscriptions();
       setFormTouched(false);
 
       if (isEditMode) {
@@ -61,6 +64,7 @@ const UserFormModal = ({ visible, onClose, user }) => {
           userName: user?.userName,
           password: "",
           role: user?.role,
+          subscriptionId: user?.subscriptionId,
           address: user?.address,
           landmark: user?.landmark,
           street: user?.street,
@@ -114,6 +118,22 @@ const UserFormModal = ({ visible, onClose, user }) => {
     }
   };
 
+  // New function to fetch subscription plans
+  const fetchSubscriptions = async () => {
+    try {
+      const formData = new FormData();
+      formData.append('PUID', puid);
+      formData.append('Slug', window.location.pathname);
+      formData.append('CrudAction', 'VIEW');
+      formData.append('PageSize', 100);
+      
+      const response = await axios.post(`${API_URL}/Subscription/manage`, formData);
+      setSubscriptions(response.data.data || []);
+    } catch (error) {
+      console.error("Error fetching subscription plans:", error);
+    }
+  };
+
   const filterCitiesByState = (stateName) => {
     const stateData = states.find((state) => state.state === stateName);
     setCities(stateData?.cities || []);
@@ -146,20 +166,27 @@ const UserFormModal = ({ visible, onClose, user }) => {
     try {
       const values = await form.validateFields();
       setLoading(true);
-
-      const params = {
-        ...values,
-        PUID: puid,
-        Slug: window.location.pathname,
-        CrudAction: isEditMode ? "EDIT" : "ADD",
-      };
-
-      await axios.post(`${API_URL}/User/manage`, null, { params });
-
+      
+      const formData = new FormData();
+      
+      // Add form values to FormData
+      Object.keys(values).forEach(key => {
+        if (values[key] !== null && values[key] !== undefined) {
+          formData.append(key, values[key]);
+        }
+      });
+      
+      // Add additional parameters
+      formData.append('PUID', puid);
+      formData.append('Slug', window.location.pathname);
+      formData.append('CrudAction', isEditMode ? 'EDIT' : 'ADD');
+      
+      await axios.post(`${API_URL}/User/manage`, formData);
+      
       message.success(`User ${isEditMode ? "updated" : "created"} successfully`);
       onClose(true);
     } catch (error) {
-      console.error("Error submitting form:", error);
+      console.error('Error submitting form:', error);
       message.error(
         error.response?.data?.message ||
           `Failed to ${isEditMode ? "update" : "create"} user`
@@ -293,7 +320,7 @@ const UserFormModal = ({ visible, onClose, user }) => {
         </Row>
 
         <Row gutter={24}>
-          <Col xs={24} md={12}>
+          <Col xs={24} md={8}>
             <Form.Item
               name="password"
               label={isEditMode ? "New Password" : "Password"}
@@ -311,7 +338,7 @@ const UserFormModal = ({ visible, onClose, user }) => {
             >
               <Input.Password
                 prefix={<LockOutlined style={{ color: '#bfbfbf' }} />}
-                 placeholder={
+                placeholder={
                   isEditMode
                     ? "Enter new password (optional)"
                     : "Enter password"
@@ -320,7 +347,7 @@ const UserFormModal = ({ visible, onClose, user }) => {
             </Form.Item>
           </Col>
 
-          <Col xs={24} md={12}>
+          <Col xs={24} md={8}>
             <Form.Item
               name="role"
               label="Role"
@@ -346,6 +373,39 @@ const UserFormModal = ({ visible, onClose, user }) => {
                         }}
                       ></span>
                       {role}
+                    </div>
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+
+          <Col xs={24} md={8}>
+            <Form.Item
+              name="subscriptionId"
+              label="Subscription Plan"
+              tooltip={{ title: "Subscription plan for this user", icon: <InfoCircleOutlined /> }}
+            >
+              <Select
+                placeholder="Select subscription plan"
+                loading={subscriptions.length === 0}
+                suffixIcon={<CreditCardOutlined style={{ color: '#722ed1' }} />}
+                allowClear
+              >
+                {subscriptions.map((subscription) => (
+                  <Option key={subscription.id} value={subscription.id}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <span
+                        style={{ 
+                          display: 'inline-block', 
+                          width: 8, 
+                          height: 8, 
+                          borderRadius: '50%', 
+                          marginRight: 8,
+                          background: '#722ed1'
+                        }}
+                      ></span>
+                      {subscription.name} ({subscription.days} days)
                     </div>
                   </Option>
                 ))}

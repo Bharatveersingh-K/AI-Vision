@@ -2,10 +2,16 @@
 import axios from 'axios';
 
 // Read from runtime system environment if available, fallback to Vite env
-const API_URL =
-  window?.env?.API_URL && window.env.API_URL !== "__API_URL__"
-    ? window.env.API_URL
-    : import.meta.env.VITE_API_URL;
+let API_URL;
+if (import.meta.env.DEV) {
+  API_URL = import.meta.env.VITE_API_URL;
+} else {
+  API_URL =window.env.API_URL
+}
+
+ 
+
+// Use API_URL to create axios instance...
 
 console.log('API_URL being used:', API_URL);
 

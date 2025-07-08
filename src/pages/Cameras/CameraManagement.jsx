@@ -67,34 +67,32 @@ const CameraManagement = () => {
 
   const puid = Cookies.get('id') || 0;
 
-  const fetchCameras = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await axios.post(`${API_URL}/Camera/manage`, null, {
-        params: {
-          PUID: puid,
-          Slug: window.location.pathname,
-          CrudAction: 'VIEW',
-          PageNo: pagination.current,
-          PageSize: pagination.pageSize,
-          Search: searchText
-        }
-      });
-      
-      const data = response.data.data || [];
-      setCameras(data);
-      setPagination({
-        ...pagination,
-        total: response.data.totalCount || 0
-      });
-    } catch (error) {
-      console.error('Error fetching cameras:', error);
-      message.error('Failed to fetch cameras');
-    } finally {
-      setLoading(false);
-    }
-  }, [pagination.current, pagination.pageSize, searchText, puid]);
+ const fetchCameras = useCallback(async () => {
+  setLoading(true);
+  try {
+    const formData = new FormData();
+    formData.append('PUID', puid);
+    formData.append('Slug', window.location.pathname);
+    formData.append('CrudAction', 'VIEW');
+    formData.append('PageNo', pagination.current);
+    formData.append('PageSize', pagination.pageSize);
+    formData.append('Search', searchText);
 
+    const response = await axios.post(`${API_URL}/Camera/manage`, formData);
+    
+    const data = response.data.data || [];
+    setCameras(data);
+    setPagination({
+      ...pagination,
+      total: response.data.totalCount || 0
+    });
+  } catch (error) {
+    console.error('Error fetching cameras:', error);
+    message.error('Failed to fetch cameras');
+  } finally {
+    setLoading(false);
+  }
+}, [pagination.current, pagination.pageSize, searchText, puid]);
   useEffect(() => {
     fetchCameras();
   }, [fetchCameras, refreshKey]);

@@ -90,28 +90,38 @@ const CameraFormModal = ({ visible, onClose, camera }) => {
   };
 
   const handleSubmit = async () => {
-    try {
-      const values = await form.validateFields();
-      setLoading(true);
-      
-      const params = {
-        ...values,
-        PUID: puid,
-        Slug: window.location.pathname,
-        CrudAction: isEditMode ? 'EDIT' : 'ADD'
-      };
-      
-      await axios.post(`${API_URL}/Camera/manage`, null, { params });
-      
-      message.success(`Camera ${isEditMode ? 'updated' : 'added'} successfully`);
-      onClose(true);
-    } catch (error) {
-      console.error('Error submitting form:', error);
-      message.error(error.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'add'} camera`);
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    const values = await form.validateFields();
+    setLoading(true);
+    
+    // Create FormData object
+    const formData = new FormData();
+    
+    // Append all form values to FormData
+    Object.keys(values).forEach(key => {
+      // Skip null or undefined values
+      if (values[key] !== null && values[key] !== undefined) {
+        formData.append(key, values[key]);
+      }
+    });
+    
+    // Add additional required parameters
+    formData.append('PUID', puid);
+    formData.append('Slug', window.location.pathname);
+    formData.append('CrudAction', isEditMode ? 'EDIT' : 'ADD');
+    
+    // Send the request with FormData as the body
+    await axios.post(`${API_URL}/Camera/manage`, formData);
+    
+    message.success(`Camera ${isEditMode ? 'updated' : 'added'} successfully`);
+    onClose(true);
+  } catch (error) {
+    console.error('Error submitting form:', error);
+    message.error(error.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'add'} camera`);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const modalTitle = (
     <div style={{ display: 'flex', alignItems: 'center' }}>

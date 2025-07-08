@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Table, Button, Space, Badge, message, Input, Tooltip, Menu, Dropdown, 
-  Switch, Upload, Modal, Form, Typography, Tag, Divider 
+  Switch, Upload, Modal, Form, Typography, Tag, Divider, Select
 } from 'antd';
 import { 
   UserOutlined, 
@@ -23,7 +23,8 @@ import {
   TeamOutlined,
   PaperClipOutlined,
   BellOutlined,
-  CloudUploadOutlined
+  CloudUploadOutlined,
+  VideoCameraOutlined
 } from '@ant-design/icons';
 import axios from 'axios';
 import Cookies from 'js-cookie';
@@ -115,16 +116,15 @@ const ClientManagement = () => {
   const fetchClients = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await axios.post(`${API_URL}/Clients/manage`, null, {
-        params: {
-          PUID: puid,
-          Slug: window.location.pathname,
-          CrudAction: 'VIEW',
-          PageNo: pagination.current,
-          PageSize: pagination.pageSize,
-          Search: searchText
-        }
-      });
+      const formData = new FormData();
+      formData.append('PUID', puid);
+      formData.append('Slug', window.location.pathname);
+      formData.append('CrudAction', 'VIEW');
+      formData.append('PageNo', pagination.current);
+      formData.append('PageSize', pagination.pageSize);
+      formData.append('Search', searchText);
+      
+      const response = await axios.post(`${API_URL}/Clients/manage`, formData);
       
       const data = response.data.data || [];
       setClients(data);
@@ -178,8 +178,12 @@ const ClientManagement = () => {
     setDeleteModalVisible(true);
   };
 
+  // Updated to properly reset state
   const handleModalClose = (refresh = false) => {
     setModalVisible(false);
+    setSelectedClient(null);
+    setFileList([]);
+    
     if (refresh) {
       setRefreshKey(prevKey => prevKey + 1);
     }
@@ -187,6 +191,8 @@ const ClientManagement = () => {
 
   const handleDeleteModalClose = (refresh = false) => {
     setDeleteModalVisible(false);
+    setSelectedClient(null);
+    
     if (refresh) {
       setRefreshKey(prevKey => prevKey + 1);
     }
@@ -305,40 +311,75 @@ const ClientManagement = () => {
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
     const [formTouched, setFormTouched] = useState(false);
+    const [loadingCameras, setLoadingCameras] = useState(false);
+    const [cameras, setCameras] = useState([]);
     
     const isEditMode = !!client && !client.viewOnly;
     const isViewOnly = client?.viewOnly;
-    
+
+    // Fetch cameras when modal becomes visible
     useEffect(() => {
       if (visible) {
+        fetchCameras();
+      }
+    }, [visible]);
+    
+    // Set form values when client changes
+    useEffect(() => {
+      if (visible) {
+        // Reset form touched state
         setFormTouched(false);
         
-        if (client) {
-          form.setFieldsValue({
-            id: client?.id,
-            cameraId: client?.cameraId,
-            name: client?.name,
-            email: client?.email,
-            mobile: client?.mobile,
-            sendSMS: client?.sendSMS ?? false,
-            sendWhatsapp: client?.sendWhatsapp ?? false,
-            sendEmail: client?.sendEmail ?? false,
-            status: client?.status ?? true
-          });
-        } else {
-          form.resetFields();
-          form.setFieldsValue({
-            status: true,
-            sendSMS: false,
-            sendWhatsapp: false,
-            sendEmail: false
-          });
-        }
+        // Use setTimeout to ensure form is properly reset
+        setTimeout(() => {
+          if (client) {
+            form.setFieldsValue({
+              id: client?.id,
+              cameraId: client?.cameraId,
+              name: client?.name,
+              email: client?.email,
+              mobile: client?.mobile,
+              sendSMS: client?.sendSMS ?? false,
+              sendWhatsapp: client?.sendWhatsapp ?? false,
+              sendEmail: client?.sendEmail ?? false,
+              status: client?.status ?? true
+            });
+          } else {
+            form.resetFields();
+            form.setFieldsValue({
+              status: true,
+              sendSMS: false,
+              sendWhatsapp: false,
+              sendEmail: false
+            });
+          }
+        }, 100);
       }
     }, [visible, client, form]);
   
     const handleFormChange = () => {
       setFormTouched(true);
+    };
+
+    const fetchCameras = async () => {
+      setLoadingCameras(true);
+      try {
+        const formData = new FormData();
+        formData.append('PUID', puid);
+        formData.append('Slug', window.location.pathname);
+        formData.append('CrudAction', 'VIEW');
+        formData.append('PageSize', 100);
+        
+        const response = await axios.post(`${API_URL}/Camera/manage`, formData);
+        
+        const data = response.data.data || [];
+        setCameras(data);
+      } catch (error) {
+        console.error('Error fetching cameras:', error);
+        message.error('Failed to load cameras');
+      } finally {
+        setLoadingCameras(false);
+      }
     };
   
     const uploadProps = {
@@ -360,27 +401,30 @@ const ClientManagement = () => {
         setLoading(true);
         
         const formData = new FormData();
+        
+        // Add form values to FormData
+        Object.keys(values).forEach(key => {
+          if (values[key] !== null && values[key] !== undefined) {
+            formData.append(key, values[key]);
+          }
+        });
+        
+        // Add additional parameters
+        formData.append('PUID', puid);
+        formData.append('Slug', window.location.pathname);
+        formData.append('CrudAction', isEditMode ? 'EDIT' : 'ADD');
+        
+        // Add files to FormData if any
         fileList.forEach(file => {
           formData.append('files', file);
         });
         
-        const params = {
-          ...values,
-          PUID: puid,
-          Slug: window.location.pathname,
-          CrudAction: isEditMode ? 'EDIT' : 'ADD'
-        };
-        
-        if (fileList.length === 0) {
-          await axios.post(`${API_URL}/Clients/manage`, null, { params });
-        } else {
-          await axios.post(`${API_URL}/Clients/manage`, formData, { 
-            params,
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            }
-          });
-        }
+        // Send request with FormData
+        await axios.post(`${API_URL}/Clients/manage`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
         
         message.success(`Client ${isEditMode ? 'updated' : 'added'} successfully`);
         onClose(true);
@@ -407,18 +451,9 @@ const ClientManagement = () => {
       </div>
     );
 
+    // Simplified handleCancel function - directly close without confirmation
     const handleCancel = () => {
-      if (formTouched && !isViewOnly) {
-        Modal.confirm({
-          title: 'Discard changes?',
-          content: 'You have unsaved changes. Are you sure you want to discard them?',
-          okText: 'Yes, discard',
-          cancelText: 'No, continue editing',
-          onOk: () => onClose(),
-        });
-      } else {
-        onClose();
-      }
+      onClose();
     };
     
     return (
@@ -430,8 +465,8 @@ const ClientManagement = () => {
         width={700}
         centered
         destroyOnClose
-        transitionName="" // Remove transition animation
-        maskTransitionName="" // Remove mask transition animation
+        maskClosable={false}
+        keyboard={false}
       >
         {loading && (
           <div style={{ 
@@ -462,12 +497,9 @@ const ClientManagement = () => {
           disabled={isViewOnly || loading}
           onFieldsChange={handleFormChange}
           style={{ padding: '16px 0' }}
+          preserve={false}
         >
           <Form.Item name="id" hidden>
-            <Input />
-          </Form.Item>
-          
-          <Form.Item name="cameraId" hidden>
             <Input />
           </Form.Item>
           
@@ -482,6 +514,44 @@ const ClientManagement = () => {
               placeholder="Enter client name"
             />
           </Form.Item>
+
+          <Form.Item
+            name="cameraId"
+            label="Associated Camera"
+            tooltip={{ title: "Camera that this client will receive notifications for", icon: <InfoCircleOutlined /> }}
+          >
+            <Select
+              placeholder="Select a camera"
+              loading={loadingCameras}
+              allowClear
+              showSearch
+              filterOption={(input, option) => {
+                // Safe access to option text for filtering
+                const text = option?.children?.props?.children?.[1]?.props?.children || '';
+                return text.toString().toLowerCase().includes(input.toLowerCase());
+              }}
+            >
+              {cameras.map(camera => (
+                <Select.Option key={camera.id} value={camera.id}>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <span style={{ 
+                      display: 'inline-flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      width: 20,
+                      height: 20,
+                      borderRadius: '50%',
+                      background: '#1890ff',
+                      marginRight: 8
+                    }}>
+                      <VideoCameraOutlined style={{ color: 'white', fontSize: 12 }} />
+                    </span>
+                    {camera.name}
+                  </div>
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
           
           <div style={{ 
             display: 'grid', 
@@ -489,7 +559,7 @@ const ClientManagement = () => {
             gap: 16,
             marginBottom: 16
           }}>
-            <Form.Item
+                       <Form.Item
               name="email"
               label="Email Address"
               rules={[
@@ -565,7 +635,7 @@ const ClientManagement = () => {
                 valuePropName="checked"
                 style={{ marginBottom: 0 }}
               >
-                               <div style={{ 
+                <div style={{ 
                   display: 'flex', 
                   justifyContent: 'space-between', 
                   alignItems: 'center',
@@ -692,20 +762,19 @@ const ClientManagement = () => {
   // Delete confirmation modal
   const DeleteClientModal = ({ visible, onClose, client }) => {
     const [loading, setLoading] = useState(false);
-  
+    
     const handleDelete = async () => {
       if (!client || !client.id) return;
       
       setLoading(true);
       try {
-        await axios.post(`${API_URL}/Clients/manage`, null, {
-          params: {
-            Id: client.id,
-            PUID: puid,
-            Slug: window.location.pathname,
-            CrudAction: 'DELETE'
-          }
-        });
+        const formData = new FormData();
+        formData.append('Id', client.id);
+        formData.append('PUID', puid);
+        formData.append('Slug', window.location.pathname);
+        formData.append('CrudAction', 'DELETE');
+        
+        await axios.post(`${API_URL}/Clients/manage`, formData);
         
         message.success('Client deleted successfully');
         onClose(true);
@@ -730,8 +799,8 @@ const ClientManagement = () => {
         footer={null}
         centered
         width={400}
-        transitionName="" // Remove transition animation
-        maskTransitionName="" // Remove mask transition animation
+        maskClosable={false}
+        keyboard={false}
       >
         <div style={{ textAlign: 'center', padding: '16px 0' }}>
           <div style={{ marginBottom: 24 }}>

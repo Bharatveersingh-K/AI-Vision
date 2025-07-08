@@ -11,28 +11,28 @@ const DeleteUserModal = ({ visible, onClose, user }) => {
   const [loading, setLoading] = useState(false);
 
   const handleDelete = async () => {
-    if (!user || !user.id) return;
+  if (!user || !user.id) return;
+  
+  setLoading(true);
+  try {
+    const formData = new FormData();
+    formData.append('Id', user.id);
+    // Changed from userId to id to be consistent with other components
+    formData.append('PUID', Cookies.get('id') || 0);
+    formData.append('Slug', window.location.pathname);
+    formData.append('CrudAction', 'DELETE');
     
-    setLoading(true);
-    try {
-      await axios.post(`${API_URL}/User/manage`, null, {
-        params: {
-          Id: user.id,
-          PUID: Cookies.get('userId') || 0,
-          Slug: window.location.pathname,
-          CrudAction: 'DELETE'
-        }
-      });
-      
-      message.success('User deleted successfully');
-      onClose(true);
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      message.error(error.response?.data?.message || 'Failed to delete user');
-    } finally {
-      setLoading(false);
-    }
-  };
+    await axios.post(`${API_URL}/User/manage`, formData);
+    
+    message.success('User deleted successfully');
+    onClose(true);
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    message.error(error.response?.data?.message || 'Failed to delete user');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <Modal

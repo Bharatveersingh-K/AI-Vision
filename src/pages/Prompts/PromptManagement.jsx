@@ -74,34 +74,32 @@ const PromptManagement = () => {
 
   const puid = Cookies.get('id') || 0;
 
-  const fetchPrompts = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await axios.post(`${API_URL}/Prompt/manage`, null, {
-        params: {
-          PUID: puid,
-          Slug: window.location.pathname,
-          CrudAction: 'VIEW',
-          PageNo: pagination.current,
-          PageSize: pagination.pageSize,
-          Search: searchText
-        }
-      });
-      
-      const data = response.data.data || [];
-      setPrompts(data);
-      setPagination({
-        ...pagination,
-        total: response.data.totalCount || 0
-      });
-    } catch (error) {
-      console.error('Error fetching prompts:', error);
-      message.error('Failed to fetch prompts');
-    } finally {
-      setLoading(false);
-    }
-  }, [pagination.current, pagination.pageSize, searchText, puid]);
-
+ const fetchPrompts = useCallback(async () => {
+  setLoading(true);
+  try {
+    const formData = new FormData();
+    formData.append('PUID', puid);
+    formData.append('Slug', window.location.pathname);
+    formData.append('CrudAction', 'VIEW');
+    formData.append('PageNo', pagination.current);
+    formData.append('PageSize', pagination.pageSize);
+    formData.append('Search', searchText);
+    
+    const response = await axios.post(`${API_URL}/Prompt/manage`, formData);
+    
+    const data = response.data.data || [];
+    setPrompts(data);
+    setPagination({
+      ...pagination,
+      total: response.data.totalCount || 0
+    });
+  } catch (error) {
+    console.error('Error fetching prompts:', error);
+    message.error('Failed to fetch prompts');
+  } finally {
+    setLoading(false);
+  }
+}, [pagination.current, pagination.pageSize, searchText, puid]);
   useEffect(() => {
     fetchPrompts();
   }, [fetchPrompts, refreshKey]);
@@ -319,43 +317,46 @@ const PromptManagement = () => {
       },
     };
   
-    const handleSubmit = async () => {
-      try {
-        const values = await form.validateFields();
-        setLoading(true);
-        
-        const formData = new FormData();
-        fileList.forEach(file => {
-          formData.append('files', file);
-        });
-        
-        const params = {
-          ...values,
-          PUID: puid,
-          Slug: window.location.pathname,
-          CrudAction: isEditMode ? 'EDIT' : 'ADD'
-        };
-        
-        if (fileList.length === 0) {
-          await axios.post(`${API_URL}/Prompt/manage`, null, { params });
-        } else {
-          await axios.post(`${API_URL}/Prompt/manage`, formData, { 
-            params,
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            }
-          });
-        }
-        
-        message.success(`Prompt ${isEditMode ? 'updated' : 'added'} successfully`);
-        onClose(true);
-      } catch (error) {
-        console.error('Error submitting form:', error);
-        message.error(error.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'add'} prompt`);
-      } finally {
-        setLoading(false);
+   const handleSubmit = async () => {
+  try {
+    const values = await form.validateFields();
+    setLoading(true);
+    
+    const formData = new FormData();
+    
+    // Add form values to FormData
+    Object.keys(values).forEach(key => {
+      if (values[key] !== null && values[key] !== undefined) {
+        formData.append(key, values[key]);
       }
-    };
+    });
+    
+    // Add additional parameters
+    formData.append('PUID', puid);
+    formData.append('Slug', window.location.pathname);
+    formData.append('CrudAction', isEditMode ? 'EDIT' : 'ADD');
+    
+    // Add files to FormData if any
+    fileList.forEach(file => {
+      formData.append('files', file);
+    });
+    
+    // Send request with FormData
+    await axios.post(`${API_URL}/Prompt/manage`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    
+    message.success(`Prompt ${isEditMode ? 'updated' : 'added'} successfully`);
+    onClose(true);
+  } catch (error) {
+    console.error('Error submitting form:', error);
+    message.error(error.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'add'} prompt`);
+  } finally {
+    setLoading(false);
+  }
+};
     
     const modalTitle = (
       <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -564,29 +565,28 @@ const PromptManagement = () => {
   const DeletePromptModal = ({ visible, onClose, prompt }) => {
     const [loading, setLoading] = useState(false);
   
-    const handleDelete = async () => {
-      if (!prompt || !prompt.id) return;
-      
-      setLoading(true);
-      try {
-        await axios.post(`${API_URL}/Prompt/manage`, null, {
-          params: {
-            Id: prompt.id,
-            PUID: puid,
-            Slug: window.location.pathname,
-            CrudAction: 'DELETE'
-          }
-        });
-        
-        message.success('Prompt deleted successfully');
-        onClose(true);
-      } catch (error) {
-        console.error('Error deleting prompt:', error);
-        message.error(error.response?.data?.message || 'Failed to delete prompt');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const handleDelete = async () => {
+  if (!prompt || !prompt.id) return;
+  
+  setLoading(true);
+  try {
+    const formData = new FormData();
+    formData.append('Id', prompt.id);
+    formData.append('PUID', puid);
+    formData.append('Slug', window.location.pathname);
+    formData.append('CrudAction', 'DELETE');
+    
+    await axios.post(`${API_URL}/Prompt/manage`, formData);
+    
+    message.success('Prompt deleted successfully');
+    onClose(true);
+  } catch (error) {
+    console.error('Error deleting prompt:', error);
+    message.error(error.response?.data?.message || 'Failed to delete prompt');
+  } finally {
+    setLoading(false);
+  }
+};
   
     return (
       <Modal
